@@ -201,14 +201,15 @@ def write_template_registration_qc(
             f"{case_name} warped + label z={idx}",
         )
         _overlay_labels(axes[r, 1], t_img, None, f"Template z={idx}")
-        # Overlay: warped liver label boundaries vs template liver mask
+        # Overlay: warped liver label vs template liver mask (liver is class 1 only;
+        # mask out other classes or auto-normalization would recolor them)
         axes[r, 2].imshow(t_img, cmap="gray")
-        if wlab_arr is not None and np.any(wlab_arr[idx] > 0):
+        if wlab_arr is not None and np.any(wlab_arr[idx] == 1):
             from matplotlib.colors import ListedColormap
 
             axes[r, 2].imshow(
-                np.ma.masked_where(wlab_arr[idx] == 0, wlab_arr[idx]),
-                cmap=ListedColormap([(0, 0, 0, 0), (1.0, 0.2, 0.1, 0.45)]),
+                np.ma.masked_where(wlab_arr[idx] != 1, wlab_arr[idx]),
+                cmap=ListedColormap([(1.0, 0.2, 0.1, 0.45)]),
             )
         if tmask_arr is not None and np.any(tmask_arr[idx] > 0):
             axes[r, 2].contour(tmask_arr[idx] > 0, levels=[0.5], colors="cyan", linewidths=1.2)
