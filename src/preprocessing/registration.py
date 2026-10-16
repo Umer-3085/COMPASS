@@ -235,6 +235,192 @@ def register_to_template(
     }
 
 
+def ants_register_via_fixed_to_template(
+    moving: sitk.Image,
+    via_fixed: sitk.Image,
+    template: sitk.Image,
+    moving_label: sitk.Image | None,
+    via_label: sitk.Image | None,
+    template_liver_mask: sitk.Image | None,
+    type_of_transform: str = "Affine",
+    reg_kwargs: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """Register moving -> template chained through an intermediate volume.
+
+    Fallback for hard cross-modality cases (e.g. T2 -> CT template) where
+    direct registration fails QC: register moving -> via (same patient,
+    well-conditioned) and via -> template separately, then concatenate the
+    two ANTs transform chains (via transform applied first) so `moving`
+    lands on the template grid in one resampling. The output is still on
+    the template grid; only the transform path differs.
+    """
+    import ants
+
+    with tempfile.TemporaryDirectory(prefix="compass_ants_chain_") as td:
+        td = Path(td)
+
+        def _as_ants(name: str, img: sitk.Image):
+            p = td / name
+            sitk.WriteImage(sitk.Cast(img, sitk.sitkFloat32), str(p))
+            return ants.image_read(str(p))
+
+        fa = _as_ants("template.nii.gz", template)
+        va = _as_ants("via.nii.gz", via_fixed)
+        ma = _as_ants("moving.nii.gz", moving)
+
+        # Step 1: moving -> via (within patient). Step 2: via -> template.
+        reg_via = ants.registration(
+            fixed=va, moving=ma, type_of_transform=type_of_transform,
+            verbose=False, **(reg_kwargs or {}),
+        )
+        reg_tpl = ants.registration(
+            fixed=fa, moving=va, type_of_transform=type_of_transform,
+            verbose=False, **(reg_kwargs or {}),
+        )
+        # ANTs applies the LAST transform in the list first: [via->template
+        # transforms..., moving->via transforms...] = via-transform first.
+        composite = list(reg_tpl["fwdtransforms"]) + list(reg_via["fwdtransforms"])
+
+        warped_a = ants.apply_transforms(
+            fixed=fa, moving=ma, transformlist=composite, interpolator="linear"
+        )
+        wp = td / "warped.nii.gz"
+        ants.image_write(warped_a, str(wp))
+        warped = sitk.ReadImage(str(wp))
+        warped.CopyInformation(template)
+
+        warped_label = None
+        warped_label_on_via = None
+        if moving_label is not None:
+            la = _as_ants("moving_label.nii.gz", sitk.Cast(moving_label, sitk.sitkUInt8))
+            wl = ants.apply_transforms(
+                fixed=fa, moving=la, transformlist=composite, interpolator="nearestNeighbor"
+            )
+            wlp = td / "warped_label.nii.gz"
+            ants.image_write(wl, str(wlp))
+            warped_label = sitk.Cast(sitk.ReadImage(str(wlp)), sitk.sitkUInt8)
+            warped_label.CopyInformation(template)
+            if via_label is not None:
+                wl2 = ants.apply_transforms(
+                    fixed=va, moving=la,
+                    transformlist=list(reg_via["fwdtransforms"]),
+                    interpolator="nearestNeighbor",
+                )
+                wlp2 = td / "warped_label_on_via.nii.gz"
+                ants.image_write(wl2, str(wlp2))
+                warped_label_on_via = sitk.Cast(sitk.ReadImage(str(wlp2)), sitk.sitkUInt8)
+                warped_label_on_via.CopyInformation(via_fixed)
+
+        return {
+            "backend": "ants",
+            "warped_image": sitk.Cast(warped, sitk.sitkFloat32),
+            "warped_label": warped_label,
+            "warped_label_on_via": warped_label_on_via,
+        }
+
+
+def register_to_template_via_t1(
+    moving: sitk.Image,
+    t1: sitk.Image,
+    template: sitk.Image,
+    template_liver_mask: sitk.Image | None,
+    moving_label: sitk.Image | None,
+    t1_label: sitk.Image | None,
+    cfg: PreprocessConfig,
+    moving_name: str = "volume",
+    case_name: str = "case",
+) -> dict[str, Any]:
+    """Fallback: moving -> T1 (same patient) -> CT template, QC-gated.
+
+    Same escalation ladder and template-liver-Dice gate as
+    register_to_template; additionally records the within-patient
+    (moving -> T1) liver Dice for diagnostics.
+    """
+    attempts: list[dict[str, Any]] = []
+    best: dict[str, Any] | None = None
+    best_type: str | None = None
+    best_dice: float = -1.0
+
+    for step in template_registration_plan(cfg):
+        try:
+            reg = ants_register_via_fixed_to_template(
+                moving=moving,
+                via_fixed=t1,
+                template=template,
+                moving_label=moving_label,
+                via_label=t1_label,
+                template_liver_mask=template_liver_mask,
+                type_of_transform=step["type_of_transform"],
+                reg_kwargs=step.get("reg_kwargs"),
+            )
+        except Exception as exc:
+            attempts.append(
+                {
+                    "step": step["name"],
+                    "type": step["type_of_transform"],
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            continue
+
+        t_dice = None
+        if template_liver_mask is not None and reg["warped_label"] is not None:
+            d = dice_score(reg["warped_label"], template_liver_mask, 1)
+            t_dice = round(d, 4) if d is not None else None
+        v_dice = None
+        if t1_label is not None and reg["warped_label_on_via"] is not None:
+            d = dice_score(reg["warped_label_on_via"], t1_label, 1)
+            v_dice = round(d, 4) if d is not None else None
+        qc_pass = t_dice is not None and t_dice >= cfg.registration_min_liver_dice
+
+        attempts.append(
+            {
+                "step": step["name"],
+                "type": step["type_of_transform"],
+                "liver_dice_vs_template": t_dice,
+                "liver_dice_vs_t1": v_dice,
+                "qc_pass": qc_pass,
+            }
+        )
+        if t_dice is not None and t_dice > best_dice:
+            best_dice = t_dice
+            best = reg
+            best_type = step["type_of_transform"]
+        elif best is None:
+            best = reg
+            best_type = step["type_of_transform"]
+
+        if qc_pass:
+            return {
+                "warped_image": reg["warped_image"],
+                "warped_label": reg["warped_label"],
+                "warped_extras": {},
+                "accepted_step": f"chain_{step['name']}",
+                "type": step["type_of_transform"],
+                "backend": "ants",
+                "liver_dice_vs_template": t_dice,
+                "liver_dice_vs_t1": v_dice,
+                "failed": False,
+                "attempts": attempts,
+                "moving": moving_name,
+                "case": case_name,
+            }
+
+    return {
+        "warped_image": best["warped_image"] if best else None,
+        "warped_label": best["warped_label"] if best else None,
+        "warped_extras": {},
+        "accepted_step": None,
+        "type": best_type,
+        "backend": "ants",
+        "liver_dice_vs_template": best_dice if best_dice >= 0 else None,
+        "failed": True,
+        "attempts": attempts,
+        "moving": moving_name,
+        "case": case_name,
+    }
+
+
 def register_t2_to_t1(
     t1: sitk.Image,
     t2: sitk.Image,

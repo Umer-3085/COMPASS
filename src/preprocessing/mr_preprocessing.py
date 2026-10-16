@@ -30,7 +30,12 @@ from .label_utils import (
     stack_masks_as_image,
 )
 from .paths import ProjectPaths
-from .registration import evaluate_registration, register_t2_to_t1, register_to_template
+from .registration import (
+    evaluate_registration,
+    register_t2_to_t1,
+    register_to_template,
+    register_to_template_via_t1,
+)
 from .volume_utils import (
     assert_same_physical_grid,
     extract_axial_slices,
@@ -277,6 +282,35 @@ def _finish_mr_on_template(
         moving_name="t2_spir",
         case_name=f"mr_case_{case_id:02d}_t2",
     )
+    # Fallback for direct-failure cases: chain T2 -> T1 (same patient) ->
+    # template. Keeps the output on the template grid; only the transform
+    # path changes. Adopted if it passes QC or beats the direct attempts.
+    if reg_t2.get("failed"):
+        chain = register_to_template_via_t1(
+            moving=t2_n4,
+            t1=t1_in_n4,
+            template=tpl_img,
+            template_liver_mask=tpl_mask,
+            moving_label=labels_t2,
+            t1_label=labels_t1,
+            cfg=cfg,
+            moving_name="t2_spir",
+            case_name=f"mr_case_{case_id:02d}_t2",
+        )
+        chain_dice = chain.get("liver_dice_vs_template")
+        direct_dice = reg_t2.get("liver_dice_vs_template")
+        if chain.get("warped_image") is not None and (
+            not chain.get("failed")
+            or (chain_dice is not None and chain_dice > (direct_dice or 0.0))
+        ):
+            chain.update(
+                {
+                    "fallback_used": "chain_via_t1",
+                    "direct_attempts": reg_t2.get("attempts"),
+                    "direct_liver_dice_vs_template": direct_dice,
+                }
+            )
+            reg_t2 = chain
     t2_src = reg_t2["warped_image"]
     labels_t2_warp = reg_t2["warped_label"]
 
