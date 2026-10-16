@@ -1,0 +1,23 @@
+# CHAOS raw DICOMs and masks (multi-GB; do not publish)
+data/raw/
+data/
+
+# Preprocessed 3D volumes and 2D slices (multi-GB)
+preprocessed/ct/
+preprocessed/mr/
+preprocessed/official_test/
+**/*.nii.gz
+**/slices/
+*.npy
+
+# Local scratch
+processed/
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.env
+*.pt
+*.pth
+*.ckpt
