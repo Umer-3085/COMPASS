@@ -13,11 +13,17 @@ Folder ID does **not** mean the same person:
 - Never register MRI to CT using matching folder numbers
 - Never build one multimodal sample from CT case N and MR case N
 
-The original paper’s “MRI → register to CT” step does **not** apply to this local dataset.
+The paper states “ANTs aligns the MRI sequences to the CT reference volume.” No matched CT
+patient exists for any MR case, so the CT reference volume is a **study-specific CT mean
+template** built from the 14 training CTs (`src/preprocessing/template.py`). Every CT case,
+T1, T2, and their labels are registered onto that single template grid with ANTs (Affine,
+escalating to SyN if the liver-Dice QC gate fails).
 
 Correct statement:
 
-> CT and MR are preprocessed independently. Intra-subject MR sequences (T1 and T2) may be registered. CT↔MR registration is not performed.
+> All modalities (CT, T1, T2) and labels are resampled onto one common CT-derived template
+> grid (1.5 mm isotropic), so they share identical geometry and slice indices. Registration
+> is study-level (each case → template), never CT patient N ↔ MR patient N.
 
 ## 2. What was implemented
 
@@ -37,11 +43,23 @@ Pipeline (labeled data only):
 Raw CHAOS
 → dataset audit
 → patient splits (seed 42)
+→ CT mean template build (14 training CTs, 2 ANTs Affine rounds, fused liver mask)
 → load DICOM with SimpleITK/GDCM (physical order, not filename order)
-→ CT: HU check → clip [-200, 250] → scale to [0, 1] → 1.5 mm isotropic → liver labels
-→ MR: N4 → T2→T1 affine (optional) → 1.5 mm isotropic → foreground z-score → 4-class labels
-→ QC images
-→ axial .npy slices
+→ CT: HU check → clip [-200, 250] → scale to [0, 1] → 1.5 mm isotropic
+     → ANTs register to template (liver-Dice QC gate) → liver labels on template grid
+→ MR: N4 → 1.5 mm isotropic → ANTs register T1(+out-phase) and T2 to template
+     → foreground z-score on template grid → 4-class labels on template grid
+→ QC images (incl. red/cyan warped-liver vs template-liver overlays)
+→ axial .npy slices (identical indices across CT/MR/labels)
+```
+
+Template-only / rebuild flags:
+
+```bash
+python preprocess.py --template-only      # build/load template, no cases
+python preprocess.py --rebuild-template   # force rebuild
+python preprocess.py --no-template        # legacy per-case path (tests)
+python preprocess.py --template-cases 1,2,3   # subset of training CTs for the template
 ```
 
 Official unlabeled CHAOS test is **not** in the supervised splits. Optional:
@@ -68,12 +86,13 @@ Saved in `preprocessed/config.json`:
 | Target spacing | 1.5 × 1.5 × 1.5 mm |
 | CT window | [-200, 250] HU → [0, 1] |
 | MRI | N4 + foreground z-score (per volume, not global) |
-| T2→T1 | ANTs affine; min liver Dice 0.40 |
-| CT↔MR registration | **false** |
+| Common grid | CT mean template (14 train CTs, seed CT 1, 2 rounds) |
+| Case → template | ANTs Affine → SyN escalation; min warped-liver Dice 0.40 |
+| CT↔MR patient registration | **false** |
 | Slice policy | train: foreground only; val/test: all slices |
 | Supervised split | 14 train / 2 val / 4 test **per modality** |
 
-Software used when last run: Python 3.12, SimpleITK 2.5.6, ANTsPy 0.6.3.
+Software used when last run: Python 3.13, SimpleITK 2.5.6, ANTsPy (antspyx) 0.6.3.
 
 ## 4. Patient splits
 
@@ -116,6 +135,10 @@ Unexpected PNG values fail the case; they are not silently mapped.
 ```text
 preprocessed/
   config.json
+  template/
+    template.nii.gz          # CT mean template (reference volume)
+    template_liver_mask.nii.gz
+    template_meta.json
   splits/{ct,mr}/{train,val,test}_patients.txt
   ct/{train,val,test}/case_XX/
     ct.nii.gz
@@ -131,7 +154,7 @@ preprocessed/
     labels_t2.nii.gz
     meta.json
     slices/...
-  qc/ct/  qc/mr/  qc/registration/  qc/preprocessing_report.json
+  qc/ct/  qc/mr/  qc/template/  qc/template_registration/  qc/preprocessing_report.json
 ```
 
 NIfTI volumes are the geometric source of truth (size, spacing, origin, direction).
@@ -146,9 +169,15 @@ print(img.shape, img.dtype, img.min(), img.max())
 print(lab.shape, np.unique(lab))
 ```
 
-Same index means the same resampled slice **within one study** after 1.5 mm resampling. Do not match original CT slice numbers to original MRI slice numbers.
+Same index means the same resampled slice **on the common template grid**. Because every case
+(CT and MR) is registered to the same template, slice index k refers to the same axial plane
+in every CT volume, every MR volume, and every label volume — this is the paper’s “identical
+slice indices across CT, MRI, and labels” property. Do not confuse this with original
+(acquisition-space) slice numbers, which still differ per study.
 
-For MR cases with `t2_on_t1_grid: true`, T1 / T2 / labels share the same slice indices. For MR 36 and 37 (`t2_on_t1_grid: false`), T2 slices live on a different grid (`t2_spir_native_*.npy`).
+All MR cases now have `on_template_grid: true`: T1, T2, and both label volumes share one
+grid. Cases that fail the registration QC gate are flagged (`registration_failed: true` and
+a warning in the report), never silently left on their native grid.
 
 ## 7. How to check success
 
@@ -159,19 +188,26 @@ For MR cases with `t2_on_t1_grid: true`, T1 / T2 / labels share the same slice i
 python -m src.preprocessing.rebuild_report
 ```
 
-3. Inspect `preprocessed/qc/ct/*.png` and `preprocessed/qc/mr/*.png`.
+3. Inspect `preprocessed/qc/ct/*.png`, `preprocessed/qc/mr/*.png`, and the registration overlays
+   in `preprocessed/qc/template_registration/*.png` (warped liver in **red** vs template liver
+   contour in **cyan** — they should overlap closely).
 4. In each `meta.json` confirm:
    - `processed_spacing` = `[1.5, 1.5, 1.5]`
+   - `on_template_grid`: true (CT and MR)
+   - `template_registration` (CT) / `template_registration.t1|t2` (MR) report `performed: true`
+     and a warped-liver Dice ≥ 0.40
    - CT labels unique ⊆ `{0, 1}`
    - MR labels unique ⊆ `{0, 1, 2, 3, 4}`
    - `ct_mr_registration`: false
+5. Confirm every case NIfTI has the **same size/origin/spacing/direction** as
+   `preprocessed/template/template.nii.gz`.
 
 ## 8. Known issues
 
 | Case | Issue | What the pipeline did |
 |---|---|---|
-| MR 36, 37 | T2→T1 liver Dice &lt; 0.40 | T2 kept on its own 1.5 mm grid; `t2_on_t1_grid: false` |
-| MR 8, 33 | Weaker Dice (~0.53, ~0.46) | Still placed T2 on T1 grid; inspect QC |
+| Any case | Template registration QC (warped liver Dice &lt; 0.40) after Affine | Escalates Affine → SyN → extended Affine; if all fail, case is flagged `failed` + report warning (never silently kept on native grid) |
+| MR 36, 37 (legacy path only) | T2→T1 liver Dice &lt; 0.40 | Only applies with `--no-template`; on the template path T2 registers directly to the template |
 | CT-1 | Filename order ≠ GDCM order | Masks matched by DICOM index / instance, not `liver_GT_000` = array slice 0 |
 | CT-21 | `IMG-*.dcm`, 257 slices, ~1 mm z | Resampled to 1.5 mm (shape changes) |
 | Report JSON | Can be overwritten by `--only-ct` / `--only-mr` | Rebuild with `rebuild_report` |
@@ -184,6 +220,9 @@ SimpleITK already applied DICOM rescale on checked CT cases. Do not apply slope/
 2. Visually QC a few PNGs (include CT-21, MR-10, and MR-36).
 3. Write a dataloader using `preprocessed/splits/` and NIfTI or `.npy`.
 4. Apply spatial augmentation **only in training**, same transform on image + label (linear vs nearest-neighbor).
+   `src/preprocessing/augmentation.py` provides the paper’s three transforms: `random_rotate_scale_2d`
+   (rotation + scaling), `random_elastic_2d` + `apply_same_elastic` (elastic stretching), sampled
+   together by `sample_augmentation_params`.
 5. Missing-modality experiments: mask channels in the dataloader; do not delete files.
 6. Do not push `data/raw/` or large `*.nii.gz` / `slices/` to a public GitHub repo (license + size). Push code, splits, config, and this document.
 

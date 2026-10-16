@@ -1,0 +1,239 @@
+{
+  "purpose": "Common CT mean template (paper: CT reference volume / common anatomical coordinate system). Built from training CTs only.",
+  "build_case_ids": [
+    1,
+    2,
+    5,
+    6,
+    14,
+    16,
+    18,
+    21,
+    22,
+    23,
+    26,
+    27,
+    28,
+    29
+  ],
+  "seed_case": 1,
+  "target_spacing": [
+    1.5,
+    1.5,
+    1.5
+  ],
+  "template_grid": {
+    "size": [
+      235,
+      235,
+      96
+    ],
+    "spacing": [
+      1.5,
+      1.5,
+      1.5
+    ],
+    "origin": [
+      -167.7859,
+      -176.0438,
+      -226.5
+    ],
+    "direction": [
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      1.0
+    ]
+  },
+  "rounds": [
+    {
+      "round": 1,
+      "seconds": 365.1,
+      "stats": {
+        "n_volumes": 14,
+        "n_labeled_volumes": 14,
+        "majority_threshold": 0.5,
+        "template_intensity": {
+          "min": 0.0,
+          "max": 0.996422290802002,
+          "mean": 0.27084609866142273
+        },
+        "liver_mask_voxels": 498111,
+        "liver_mask_foreground_slices": 89
+      },
+      "per_case": {
+        "1": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8495
+        },
+        "2": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.7966
+        },
+        "5": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8854
+        },
+        "6": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8125
+        },
+        "14": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.7948
+        },
+        "16": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.9071
+        },
+        "18": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.9104
+        },
+        "21": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8234
+        },
+        "22": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.9019
+        },
+        "23": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.892
+        },
+        "26": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8901
+        },
+        "27": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.913
+        },
+        "28": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8698
+        },
+        "29": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8866
+        }
+      }
+    },
+    {
+      "round": 2,
+      "seconds": 351.5,
+      "stats": {
+        "n_volumes": 14,
+        "n_labeled_volumes": 14,
+        "majority_threshold": 0.5,
+        "template_intensity": {
+          "min": 0.0,
+          "max": 0.9972731471061707,
+          "mean": 0.2721586227416992
+        },
+        "liver_mask_voxels": 508844,
+        "liver_mask_foreground_slices": 90
+      },
+      "per_case": {
+        "1": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8598
+        },
+        "2": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.7978
+        },
+        "5": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8898
+        },
+        "6": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8189
+        },
+        "14": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8435
+        },
+        "16": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.9112
+        },
+        "18": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.913
+        },
+        "21": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8353
+        },
+        "22": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.906
+        },
+        "23": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8945
+        },
+        "26": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8961
+        },
+        "27": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.9207
+        },
+        "28": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.8848
+        },
+        "29": {
+          "transform_type": "Affine",
+          "backend": "ants",
+          "liver_dice_vs_fused_mask": 0.906
+        }
+      }
+    }
+  ],
+  "final_liver_dice_vs_fused_mask": {
+    "min": 0.7948,
+    "mean": 0.8718,
+    "max": 0.9207
+  },
+  "backend": "ants",
+  "transform": "Affine",
+  "total_seconds": 792.4
+}
