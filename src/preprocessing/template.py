@@ -119,7 +119,6 @@ def _mean_template(
     else:
         mask_arr = np.zeros_like(acc, dtype=np.uint8)
     mask = sitk.GetImageFromArray(mask_arr)
-    mask.Cast(sitk.sitkUInt8)
     mask = sitk.Cast(mask, sitk.sitkUInt8)
     mask.CopyInformation(reference)
 
