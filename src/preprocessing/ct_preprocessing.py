@@ -1,4 +1,4 @@
-"""Unpaired CT preprocessing: HU, window, resample, liver labels."""
+"""Unpaired CT preprocessing: HU, window, resample, register to CT template."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from .label_utils import (
     stack_masks_as_image,
 )
 from .paths import ProjectPaths
+from .registration import register_to_template
 from .volume_utils import (
     extract_axial_slices,
     make_isotropic_reference,
@@ -34,6 +35,7 @@ def process_ct_case(
     case_id: int,
     split: str,
     official_test: bool = False,
+    template: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
     case_dir = paths.ct_case_raw(case_id, official_test=official_test)
     dicom_dir = case_dir / "DICOM_anon"
@@ -72,6 +74,32 @@ def process_ct_case(
         label_meta["processed"] = label_statistics(labels_iso, [0, 1])
         if not set(label_meta["processed"]["unique"]).issubset({0, 1}):
             raise RuntimeError(f"CT {case_id}: resampled labels invalid")
+
+    # Paper: all scans standardized onto the common CT reference grid.
+    template_registration: dict[str, Any] = {
+        "performed": False,
+        "reason": "no_template" if template is None else None,
+    }
+    if template is not None and cfg.register_to_template:
+        reg = register_to_template(
+            moving=ct_iso,
+            template=template["image"],
+            template_liver_mask=template.get("liver_mask"),
+            moving_label=labels_iso,
+            cfg=cfg,
+            moving_name="ct",
+            case_name=f"ct_case_{case_id:02d}",
+        )
+        ct_iso = reg["warped_image"]
+        if reg["warped_label"] is not None:
+            labels_iso = reg["warped_label"]
+            if labels is not None:
+                label_meta["processed"] = label_statistics(labels_iso, [0, 1])
+        template_registration = {
+            "performed": True,
+            "on_template_grid": True,
+            **{k: v for k, v in reg.items() if k not in ("warped_image", "warped_label")},
+        }
 
     out_split = "official_test" if official_test else split
     out_dir = paths.processed_case("ct", out_split, case_id)
@@ -120,6 +148,8 @@ def process_ct_case(
         "intensity": intensity_meta,
         "labels": label_meta,
         "registration": {"performed": False, "type": "none", "reason": "ct_only_unpaired"},
+        "template_registration": template_registration,
+        "on_template_grid": bool(template_registration.get("on_template_grid")),
         "slice_selection": {
             "method": slice_method,
             "retained_indices": retained,
@@ -136,4 +166,5 @@ def process_ct_case(
         "labels": labels_iso,
         "original_ct": image,
         "original_labels": labels,
+        "template_registration": template_registration,
     }

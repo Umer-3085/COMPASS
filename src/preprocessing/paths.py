@@ -43,6 +43,22 @@ class ProjectPaths:
         return self.root / "preprocessed"
 
     @property
+    def template(self) -> Path:
+        return self.preprocessed / "template"
+
+    @property
+    def template_image(self) -> Path:
+        return self.template / "ct_template.nii.gz"
+
+    @property
+    def template_liver_mask(self) -> Path:
+        return self.template / "ct_template_liver_mask.nii.gz"
+
+    @property
+    def template_meta(self) -> Path:
+        return self.template / "template_meta.json"
+
+    @property
     def splits(self) -> Path:
         return self.preprocessed / "splits"
 

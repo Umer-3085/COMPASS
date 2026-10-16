@@ -19,9 +19,16 @@
   "n4_convergence_threshold": 1e-06,
   "foreground_otsu_bins": 128,
   "register_t2_to_t1": true,
-  "registration_backend": "sitk",
+  "registration_backend": "ants",
   "registration_type": "affine",
   "registration_min_liver_dice": 0.4,
+  "register_to_template": true,
+  "template_build_cases": "train",
+  "template_seed_case": null,
+  "template_rounds": 2,
+  "template_majority_threshold": 0.5,
+  "registration_escalate_to_syn": true,
+  "registration_syn_upsample": false,
   "slice_selection": "foreground_train_all_eval",
   "ct_mr_paired": false,
   "extract_slices": true,
@@ -54,15 +61,15 @@
     "spleen": 4
   },
   "ct_mr_registration": false,
-  "unpaired_note": "CT and MR are preprocessed independently because CHAOS CT and MR studies are unpaired. Intra-subject MR sequences (T1/T2) may be registered when required.",
+  "alignment": "CT and MR studies are unpaired (different patients), so no per-patient CT<->MR registration exists. All modalities are spatially aligned to a common CT mean template (ANTs), giving one shared anatomical coordinate grid with identical slice indices across CT, T1, T2, and labels.",
   "software": {
-    "python": "3.14.3 (tags/v3.14.3:323c59a, Feb  3 2026, 16:04:56) [MSC v.1944 64 bit (AMD64)]",
+    "python": "3.13.15 (tags/v3.13.15:4061bc4, Aug  5 2026, 13:05:39) [MSC v.1944 64 bit (AMD64)]",
     "platform": "Windows-11-10.0.26200-SP0",
     "simpleitk": "2.5.6",
-    "numpy": "2.5.4",
+    "numpy": "2.3.5",
     "pillow": "12.3.0",
     "matplotlib": "3.11.2",
-    "ants": "unavailable"
+    "ants": "0.6.3"
   },
   "splits": {
     "ct": {

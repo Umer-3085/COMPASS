@@ -25,10 +25,20 @@ class PreprocessConfig:
     n4_convergence_threshold: float = 1e-6
     foreground_otsu_bins: int = 128
 
-    register_t2_to_t1: bool = True
+    register_t2_to_t1: bool = True  # legacy T2->T1; superseded by template registration
     registration_backend: str = "ants"  # "ants" or "sitk"
     registration_type: str = "affine"  # rigid then affine; no deformable by default
     registration_min_liver_dice: float = 0.40
+
+    # Common CT template alignment (paper: "align the MRI sequences to the
+    # CT reference volume ... common anatomical coordinate system")
+    register_to_template: bool = True
+    template_build_cases: str = "train"  # "train" | "all_labeled"
+    template_seed_case: int | None = None  # None -> first training CT
+    template_rounds: int = 2  # iterative mean-template refinement rounds
+    template_majority_threshold: float = 0.5  # liver mask majority vote
+    registration_escalate_to_syn: bool = True  # Affine -> SyN -> extended Affine
+    registration_syn_upsample: bool = False
 
     slice_selection: str = "foreground_train_all_eval"
     # "all" | "foreground_only" | "foreground_train_all_eval"
@@ -70,10 +80,12 @@ class PreprocessConfig:
     def to_dict(self, extra: dict[str, Any] | None = None) -> dict[str, Any]:
         payload = asdict(self)
         payload["ct_mr_registration"] = False
-        payload["unpaired_note"] = (
-            "CT and MR are preprocessed independently because CHAOS CT and MR "
-            "studies are unpaired. Intra-subject MR sequences (T1/T2) may be "
-            "registered when required."
+        payload["alignment"] = (
+            "CT and MR studies are unpaired (different patients), so no "
+            "per-patient CT<->MR registration exists. All modalities are "
+            "spatially aligned to a common CT mean template (ANTs), giving "
+            "one shared anatomical coordinate grid with identical slice "
+            "indices across CT, T1, T2, and labels."
         )
         payload["software"] = software_versions()
         if extra:
