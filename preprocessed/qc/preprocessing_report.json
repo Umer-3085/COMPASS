@@ -205,35 +205,11 @@
   "warnings": [
     {
       "modality": "MR",
-      "case_id": 3,
-      "warning": "T2->T1 registration QC failed"
-    },
-    {
-      "modality": "MR",
-      "case_id": 15,
-      "warning": "T2->T1 registration QC failed"
-    },
-    {
-      "modality": "MR",
       "case_id": 36,
       "warning": "T2->T1 registration QC failed"
     }
   ],
   "qc_issues": [
-    {
-      "modality": "MR",
-      "case_id": 3,
-      "issues": [
-        "T2->T1 registration QC failed (low organ overlap)"
-      ]
-    },
-    {
-      "modality": "MR",
-      "case_id": 15,
-      "issues": [
-        "T2->T1 registration QC failed (low organ overlap)"
-      ]
-    },
     {
       "modality": "MR",
       "case_id": 36,
