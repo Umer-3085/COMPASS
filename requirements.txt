@@ -1,6 +1,9 @@
+# Use Python 3.13 (antspyx ships cp313 Windows wheels; cp314 does not exist yet)
 SimpleITK>=2.3
 numpy>=1.24
 Pillow>=10.0
 matplotlib>=3.8
 tqdm>=4.66
-antspyx>=0.4
+# Template registration (paper: ANTs alignment to CT reference volume).
+# antspyx 0.6.3 pins scipy<1.16, which has cp313 wheels (not cp314).
+antspyx==0.6.3

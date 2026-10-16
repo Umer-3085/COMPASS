@@ -1,4 +1,9 @@
-"""Intra-subject T2 → T1 registration. CT↔MR registration is forbidden."""
+"""Intra-subject T2 → T1 registration (legacy) + template registration.
+
+CT↔MR per-patient registration is impossible (CHAOS CT/MR are unpaired
+patients). Cross-modality alignment therefore goes through the common CT
+mean template: every CT/T1/T2 volume is registered to the template with ANTs.
+"""
 
 from __future__ import annotations
 
@@ -17,6 +22,217 @@ from .volume_utils import resample_to_reference
 
 class RegistrationError(RuntimeError):
     pass
+
+
+def ants_available() -> bool:
+    try:
+        import ants  # noqa: F401
+
+        return True
+    except Exception:
+        return False
+
+
+def ants_register_to_fixed(
+    fixed: sitk.Image,
+    moving: sitk.Image,
+    moving_label: sitk.Image | None = None,
+    type_of_transform: str = "Affine",
+    reg_kwargs: dict[str, Any] | None = None,
+    extra_movings: dict[str, sitk.Image] | None = None,
+) -> dict[str, Any]:
+    """ANTs registration of moving -> fixed grid; warps label/extras too.
+
+    extra_movings: additional images on the *moving* grid (e.g. T1 out-phase
+    sharing T1 in-phase geometry) warped with the same transform.
+    """
+    import ants
+
+    with tempfile.TemporaryDirectory(prefix="compass_ants_") as td:
+        td = Path(td)
+        f_path = td / "fixed.nii.gz"
+        m_path = td / "moving.nii.gz"
+        sitk.WriteImage(sitk.Cast(fixed, sitk.sitkFloat32), str(f_path))
+        sitk.WriteImage(sitk.Cast(moving, sitk.sitkFloat32), str(m_path))
+        fa = ants.image_read(str(f_path))
+        ma = ants.image_read(str(m_path))
+        reg = ants.registration(
+            fixed=fa,
+            moving=ma,
+            type_of_transform=type_of_transform,
+            verbose=False,
+            **(reg_kwargs or {}),
+        )
+        warped_a = ants.apply_transforms(
+            fixed=fa,
+            moving=ma,
+            transformlist=reg["fwdtransforms"],
+            interpolator="linear",
+        )
+        w_path = td / "warped.nii.gz"
+        ants.image_write(warped_a, str(w_path))
+        warped = sitk.ReadImage(str(w_path))
+        warped.CopyInformation(fixed)
+
+        warped_label = None
+        if moving_label is not None:
+            l_path = td / "moving_label.nii.gz"
+            sitk.WriteImage(sitk.Cast(moving_label, sitk.sitkUInt8), str(l_path))
+            la = ants.image_read(str(l_path))
+            wl = ants.apply_transforms(
+                fixed=fa,
+                moving=la,
+                transformlist=reg["fwdtransforms"],
+                interpolator="nearestNeighbor",
+            )
+            wl_path = td / "warped_label.nii.gz"
+            ants.image_write(wl, str(wl_path))
+            warped_label = sitk.ReadImage(str(wl_path))
+            warped_label = sitk.Cast(warped_label, sitk.sitkUInt8)
+            warped_label.CopyInformation(fixed)
+
+        warped_extras: dict[str, sitk.Image] = {}
+        for name, extra in (extra_movings or {}).items():
+            e_path = td / f"extra_{name}.nii.gz"
+            sitk.WriteImage(sitk.Cast(extra, sitk.sitkFloat32), str(e_path))
+            ea = ants.image_read(str(e_path))
+            we = ants.apply_transforms(
+                fixed=fa,
+                moving=ea,
+                transformlist=reg["fwdtransforms"],
+                interpolator="linear",
+            )
+            we_path = td / f"warped_extra_{name}.nii.gz"
+            ants.image_write(we, str(we_path))
+            w_extra = sitk.ReadImage(str(we_path))
+            w_extra.CopyInformation(fixed)
+            warped_extras[name] = sitk.Cast(w_extra, sitk.sitkFloat32)
+
+        return {
+            "backend": "ants",
+            "type": type_of_transform,
+            "warped_image": sitk.Cast(warped, sitk.sitkFloat32),
+            "warped_label": warped_label,
+            "warped_extras": warped_extras,
+        }
+
+
+def template_registration_plan(cfg: PreprocessConfig) -> list[dict[str, Any]]:
+    """Escalation ladder for template registration attempts."""
+    plan: list[dict[str, Any]] = [
+        {"name": "affine", "type_of_transform": "Affine", "reg_kwargs": {}},
+    ]
+    if cfg.registration_escalate_to_syn:
+        plan.append({"name": "syn", "type_of_transform": "SyN", "reg_kwargs": {}})
+        plan.append(
+            {
+                "name": "affine_extended",
+                "type_of_transform": "Affine",
+                "reg_kwargs": {"reg_iterations": [40, 20, 0]},
+            }
+        )
+    return plan
+
+
+def register_to_template(
+    moving: sitk.Image,
+    template: sitk.Image,
+    template_liver_mask: sitk.Image | None,
+    moving_label: sitk.Image | None,
+    cfg: PreprocessConfig,
+    moving_name: str = "volume",
+    case_name: str = "case",
+    extra_movings: dict[str, sitk.Image] | None = None,
+) -> dict[str, Any]:
+    """Register moving -> CT template with Affine→SyN escalation.
+
+    QC gate: Dice of the warped liver label (value 1) against the template
+    liver mask. Accepts the first attempt with Dice >= cfg threshold; if all
+    attempts fail QC, keeps the best-Dice attempt and flags `failed=True`
+    (never silently falls back to the native grid).
+    """
+    if not ants_available():
+        raise RegistrationError(
+            "Template registration requires ANTs (antspyx), which is not "
+            "importable in this environment."
+        )
+
+    attempts: list[dict[str, Any]] = []
+    best: dict[str, Any] | None = None
+    best_dice: float = -1.0
+
+    for step in template_registration_plan(cfg):
+        try:
+            reg = ants_register_to_fixed(
+                fixed=template,
+                moving=moving,
+                moving_label=moving_label,
+                type_of_transform=step["type_of_transform"],
+                reg_kwargs=step.get("reg_kwargs"),
+                extra_movings=extra_movings,
+            )
+        except Exception as exc:
+            attempts.append(
+                {
+                    "step": step["name"],
+                    "type": step["type_of_transform"],
+                    "error": f"{type(exc).__name__}: {exc}",
+                }
+            )
+            continue
+
+        dice = None
+        if template_liver_mask is not None and reg["warped_label"] is not None:
+            d = dice_score(reg["warped_label"], template_liver_mask, 1)
+            dice = round(d, 4) if d is not None else None
+        qc_pass = dice is not None and dice >= cfg.registration_min_liver_dice
+        # No labels at all -> accept blindly but mark unchecked.
+        if dice is None and template_liver_mask is None:
+            qc_pass = True
+
+        attempt = {
+            "step": step["name"],
+            "type": step["type_of_transform"],
+            "liver_dice_vs_template": dice,
+            "qc_pass": qc_pass,
+        }
+        attempts.append(attempt)
+
+        if dice is not None and dice > best_dice:
+            best_dice = dice
+            best = reg
+        elif best is None:
+            best = reg
+
+        if qc_pass:
+            return {
+                "warped_image": reg["warped_image"],
+                "warped_label": reg["warped_label"],
+                "warped_extras": reg.get("warped_extras", {}),
+                "accepted_step": step["name"],
+                "type": step["type_of_transform"],
+                "backend": "ants",
+                "liver_dice_vs_template": dice,
+                "failed": False,
+                "attempts": attempts,
+                "moving": moving_name,
+                "case": case_name,
+            }
+
+    # All attempts failed QC (or errored): keep the best-Dice warp, flag it.
+    return {
+        "warped_image": best["warped_image"] if best else moving,
+        "warped_label": best["warped_label"] if best else moving_label,
+        "warped_extras": (best.get("warped_extras", {}) if best else {}),
+        "accepted_step": None,
+        "type": best["type"] if best else None,
+        "backend": "ants",
+        "liver_dice_vs_template": best_dice if best_dice >= 0 else None,
+        "failed": True,
+        "attempts": attempts,
+        "moving": moving_name,
+        "case": case_name,
+    }
 
 
 def register_t2_to_t1(

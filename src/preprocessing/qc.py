@@ -150,6 +150,84 @@ def write_mr_qc(
     return [str(dest)]
 
 
+def write_template_qc(out_qc: Path, template: sitk.Image, liver_mask: sitk.Image) -> list[str]:
+    out_qc.mkdir(parents=True, exist_ok=True)
+    n = sitk.GetArrayFromImage(template).shape[0]
+    indices = [0, n // 4, n // 2, 3 * n // 4, n - 1]
+    ncols = 2
+    fig, axes = plt.subplots(len(indices), ncols, figsize=(8, 3 * len(indices)))
+    if len(indices) == 1:
+        axes = np.array([axes])
+    lab_arr = sitk.GetArrayFromImage(liver_mask)
+    for r, idx in enumerate(indices):
+        img = _slice2d(template, idx)
+        _overlay_labels(axes[r, 0], img, None, f"Template z={idx}")
+        _overlay_labels(axes[r, 1], img, lab_arr[idx], f"Template + fused liver z={idx}")
+    fig.suptitle("CT mean template", fontsize=11)
+    fig.tight_layout()
+    dest = out_qc / "ct_template.png"
+    fig.savefig(dest, dpi=120)
+    plt.close(fig)
+    return [str(dest)]
+
+
+def write_template_registration_qc(
+    out_qc: Path,
+    case_name: str,
+    template: sitk.Image,
+    warped: sitk.Image,
+    template_liver_mask: sitk.Image | None,
+    warped_label: sitk.Image | None,
+    reg_meta: dict[str, Any],
+) -> list[str]:
+    """Overlay warped label (colored) against template liver mask (contour)."""
+    out_qc.mkdir(parents=True, exist_ok=True)
+    n = sitk.GetArrayFromImage(warped).shape[0]
+    indices = [n // 3, n // 2, 2 * n // 3]
+    fig, axes = plt.subplots(len(indices), 3, figsize=(11, 3.2 * len(indices)))
+    if len(indices) == 1:
+        axes = np.array([axes])
+    wlab_arr = sitk.GetArrayFromImage(warped_label) if warped_label is not None else None
+    tmask_arr = (
+        sitk.GetArrayFromImage(template_liver_mask) if template_liver_mask is not None else None
+    )
+    for r, idx in enumerate(indices):
+        w_img = _slice2d(warped, idx)
+        t_img = _slice2d(template, idx)
+        _overlay_labels(
+            axes[r, 0],
+            w_img,
+            wlab_arr[idx] if wlab_arr is not None else None,
+            f"{case_name} warped + label z={idx}",
+        )
+        _overlay_labels(axes[r, 1], t_img, None, f"Template z={idx}")
+        # Overlay: warped liver label boundaries vs template liver mask
+        axes[r, 2].imshow(t_img, cmap="gray")
+        if wlab_arr is not None and np.any(wlab_arr[idx] > 0):
+            from matplotlib.colors import ListedColormap
+
+            axes[r, 2].imshow(
+                np.ma.masked_where(wlab_arr[idx] == 0, wlab_arr[idx]),
+                cmap=ListedColormap([(0, 0, 0, 0), (1.0, 0.2, 0.1, 0.45)]),
+            )
+        if tmask_arr is not None and np.any(tmask_arr[idx] > 0):
+            axes[r, 2].contour(tmask_arr[idx] > 0, levels=[0.5], colors="cyan", linewidths=1.2)
+        axes[r, 2].set_title(
+            f"warped liver (red) vs template (cyan) z={idx}", fontsize=8
+        )
+        axes[r, 2].axis("off")
+    dice = reg_meta.get("liver_dice_vs_template")
+    step = reg_meta.get("accepted_step") or "FAILED"
+    fig.suptitle(
+        f"{case_name} -> template [{step}] liver Dice={dice}", fontsize=11
+    )
+    fig.tight_layout()
+    dest = out_qc / f"{case_name}_to_template.png"
+    fig.savefig(dest, dpi=120)
+    plt.close(fig)
+    return [str(dest)]
+
+
 def validate_ct_result(result: dict[str, Any]) -> list[str]:
     issues = []
     ct = result["ct"]
@@ -168,6 +246,8 @@ def validate_ct_result(result: dict[str, Any]) -> list[str]:
             issues.append(f"CT labels {sorted(uniq)}")
         if sitk.GetArrayFromImage(labels).sum() == 0:
             issues.append("CT empty liver mask")
+    if (result.get("template_registration") or {}).get("failed"):
+        issues.append("CT->template registration QC failed (low liver Dice)")
     return issues
 
 
@@ -179,7 +259,19 @@ def validate_mr_result(result: dict[str, Any]) -> list[str]:
         issues.append(f"T1 spacing {t1.GetSpacing()}")
     if not np.allclose(t2.GetSpacing(), (1.5, 1.5, 1.5), atol=1e-4):
         issues.append(f"T2 spacing {t2.GetSpacing()}")
-    if result["t2_on_t1_grid"]:
+    if result.get("on_template_grid"):
+        # Paper: identical slice grid across CT, T1, T2, and labels.
+        if not geometry_compatible(t1, t2, origin_tol=1e-2):
+            issues.append("T2 not on template grid")
+        if result["labels_t1"] is not None and not geometry_compatible(
+            t1, result["labels_t1"], origin_tol=1e-2
+        ):
+            issues.append("T1 labels not on template grid")
+        if result["labels_t2"] is not None and not geometry_compatible(
+            t1, result["labels_t2"], origin_tol=1e-2
+        ):
+            issues.append("T2 labels not on template grid")
+    elif result["t2_on_t1_grid"]:
         if not geometry_compatible(t1, t2, origin_tol=1e-2):
             issues.append("T2 not on T1 physical grid after registration")
         if result["labels_t2"] is not None and not geometry_compatible(t1, result["labels_t2"], origin_tol=1e-2):
@@ -191,7 +283,7 @@ def validate_mr_result(result: dict[str, Any]) -> list[str]:
         if not geometry_compatible(t1, result["labels_t1"], origin_tol=1e-3):
             issues.append("T1/label geometry mismatch")
     if result.get("registration_failed"):
-        issues.append("T2->T1 registration QC failed (low organ overlap)")
+        issues.append("MR->template registration QC failed (low liver Dice)")
     return issues
 
 
