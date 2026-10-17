@@ -7,3 +7,7 @@ tqdm>=4.66
 # Template registration (paper: ANTs alignment to CT reference volume).
 # antspyx 0.6.3 pins scipy<1.16, which has cp313 wheels (not cp314).
 antspyx==0.6.3
+# Model training (Kaggle GPU kernels ship torch preinstalled; listed for
+# local CPU venvs and to pin minimums).
+torch>=2.4
+torchvision>=0.19

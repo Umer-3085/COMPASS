@@ -14,6 +14,7 @@ preprocessed/official_test/
 processed/
 .ipynb_checkpoints/
 __pycache__/
+runs/
 *.py[cod]
 *.log
 .venv/
@@ -22,3 +23,6 @@ venv/
 *.pt
 *.pth
 *.ckpt
+
+# zip
+compass_preprocessed.zip

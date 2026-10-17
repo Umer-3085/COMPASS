@@ -5677,34 +5677,34 @@
     }
   },
   "mr": {
-    "36": {
-      "case_id": 36,
+    "1": {
+      "case_id": 1,
       "modality": "MR",
       "t1_inphase": {
-        "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919170760445",
+        "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408504492575",
         "all_series_uids": [
-          "1.3.46.670589.11.20182.5.0.6740.2015111919170760445"
+          "1.3.46.670589.11.20182.5.0.7188.2013072408504492575"
         ],
-        "file_count": 38,
+        "file_count": 35,
         "size_xyz": [
           256,
           256,
-          38
+          35
         ],
         "array_shape_zyx": [
-          38,
+          35,
           256,
           256
         ],
         "spacing_xyz": [
-          1.69921875,
-          1.69921875,
-          9.000000412399594
+          1.89453125,
+          1.89453125,
+          5.500000224394059
         ],
         "origin_xyz": [
-          -224.11024570465,
-          -211.26826715469,
-          72.763107299805
+          -232.99694347381,
+          -238.76329636573,
+          -39.239204406738
         ],
         "direction": [
           1.0,
@@ -5719,7 +5719,7 @@
         ],
         "pixel_type": "16-bit unsigned integer",
         "intensity_min": 0.0,
-        "intensity_max": 638.0,
+        "intensity_max": 1136.0,
         "image_orientation_patient": [
           1.0,
           0.0,
@@ -5735,11 +5735,11 @@
           1.0
         ],
         "positions_available": true,
-        "position_projection_min": 72.763107299805,
-        "position_projection_max": 405.76312255859,
-        "position_step_median": 9.0,
-        "position_step_min": 8.999999999994998,
-        "position_step_max": 9.00001525879,
+        "position_projection_min": -39.239204406738,
+        "position_projection_max": 147.76080322266,
+        "position_step_median": 5.5,
+        "position_step_min": 5.499999999997996,
+        "position_step_max": 5.500007629400002,
         "position_monotonic": true,
         "position_direction": "increasing",
         "rescale_slopes": [
@@ -5786,18 +5786,15 @@
           64,
           66,
           68,
-          70,
-          72,
-          74,
-          76
+          70
         ],
         "first_tags": {
-          "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919170760445",
-          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.101619990512839196703908860793977353186",
+          "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408504492575",
+          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.346746264511337123601819380610103680660",
           "instance_number": "2 ",
-          "slice_thickness": "8 ",
-          "spacing_between_slices": "9 ",
-          "pixel_spacing": "1.69921875\\1.69921875 ",
+          "slice_thickness": "5 ",
+          "spacing_between_slices": "5.5 ",
+          "pixel_spacing": "1.89453125\\1.89453125 ",
           "image_orientation_patient": [
             1.0,
             0.0,
@@ -5807,9 +5804,9 @@
             0.0
           ],
           "image_position_patient": [
-            -224.11024570465,
-            -211.26826715469,
-            72.763107299805
+            -232.99694347381,
+            -238.76329636573,
+            -39.239204406738
           ],
           "rescale_slope": 1.0,
           "rescale_intercept": 0.0,
@@ -5820,12 +5817,12 @@
           "cols": 256
         },
         "last_tags": {
-          "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919170760445",
-          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.170325268611610779903151292603281941994",
-          "instance_number": "76",
-          "slice_thickness": "8 ",
-          "spacing_between_slices": "9 ",
-          "pixel_spacing": "1.69921875\\1.69921875 ",
+          "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408504492575",
+          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.302373320112416889136473273852253890187",
+          "instance_number": "70",
+          "slice_thickness": "5 ",
+          "spacing_between_slices": "5.5 ",
+          "pixel_spacing": "1.89453125\\1.89453125 ",
           "image_orientation_patient": [
             1.0,
             0.0,
@@ -5835,9 +5832,9 @@
             0.0
           ],
           "image_position_patient": [
-            -224.11024570465,
-            -211.26826715469,
-            405.76312255859
+            -232.99694347381,
+            -238.76329636573,
+            147.76080322266
           ],
           "rescale_slope": 1.0,
           "rescale_intercept": 0.0,
@@ -5847,33 +5844,33 @@
           "rows": 256,
           "cols": 256
         },
-        "n_files": 38
+        "n_files": 35
       },
       "t1_outphase": {
-        "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919170760445",
+        "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408504492575",
         "all_series_uids": [
-          "1.3.46.670589.11.20182.5.0.6740.2015111919170760445"
+          "1.3.46.670589.11.20182.5.0.7188.2013072408504492575"
         ],
-        "file_count": 38,
+        "file_count": 35,
         "size_xyz": [
           256,
           256,
-          38
+          35
         ],
         "array_shape_zyx": [
-          38,
+          35,
           256,
           256
         ],
         "spacing_xyz": [
-          1.69921875,
-          1.69921875,
-          9.000000412399594
+          1.89453125,
+          1.89453125,
+          5.500000224394059
         ],
         "origin_xyz": [
-          -224.11024570465,
-          -211.26826715469,
-          72.763107299805
+          -232.99694347381,
+          -238.76329636573,
+          -39.239204406738
         ],
         "direction": [
           1.0,
@@ -5888,7 +5885,7 @@
         ],
         "pixel_type": "16-bit unsigned integer",
         "intensity_min": 0.0,
-        "intensity_max": 626.0,
+        "intensity_max": 1086.0,
         "image_orientation_patient": [
           1.0,
           0.0,
@@ -5904,11 +5901,11 @@
           1.0
         ],
         "positions_available": true,
-        "position_projection_min": 72.763107299805,
-        "position_projection_max": 405.76312255859,
-        "position_step_median": 9.0,
-        "position_step_min": 8.999999999994998,
-        "position_step_max": 9.00001525879,
+        "position_projection_min": -39.239204406738,
+        "position_projection_max": 147.76080322266,
+        "position_step_median": 5.5,
+        "position_step_min": 5.499999999997996,
+        "position_step_max": 5.500007629400002,
         "position_monotonic": true,
         "position_direction": "increasing",
         "rescale_slopes": [
@@ -5955,18 +5952,15 @@
           63,
           65,
           67,
-          69,
-          71,
-          73,
-          75
+          69
         ],
         "first_tags": {
-          "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919170760445",
-          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.309123029911366445219190014880994715793",
+          "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408504492575",
+          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.226554278812292722939049617042197560419",
           "instance_number": "1 ",
-          "slice_thickness": "8 ",
-          "spacing_between_slices": "9 ",
-          "pixel_spacing": "1.69921875\\1.69921875 ",
+          "slice_thickness": "5 ",
+          "spacing_between_slices": "5.5 ",
+          "pixel_spacing": "1.89453125\\1.89453125 ",
           "image_orientation_patient": [
             1.0,
             0.0,
@@ -5976,9 +5970,9 @@
             0.0
           ],
           "image_position_patient": [
-            -224.11024570465,
-            -211.26826715469,
-            72.763107299805
+            -232.99694347381,
+            -238.76329636573,
+            -39.239204406738
           ],
           "rescale_slope": 1.0,
           "rescale_intercept": 0.0,
@@ -5989,12 +5983,12 @@
           "cols": 256
         },
         "last_tags": {
-          "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919170760445",
-          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.282244897510770125938050912351244360835",
-          "instance_number": "75",
-          "slice_thickness": "8 ",
-          "spacing_between_slices": "9 ",
-          "pixel_spacing": "1.69921875\\1.69921875 ",
+          "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408504492575",
+          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.47120465312053712638369778133670979385",
+          "instance_number": "69",
+          "slice_thickness": "5 ",
+          "spacing_between_slices": "5.5 ",
+          "pixel_spacing": "1.89453125\\1.89453125 ",
           "image_orientation_patient": [
             1.0,
             0.0,
@@ -6004,9 +5998,9 @@
             0.0
           ],
           "image_position_patient": [
-            -224.11024570465,
-            -211.26826715469,
-            405.76312255859
+            -232.99694347381,
+            -238.76329636573,
+            147.76080322266
           ],
           "rescale_slope": 1.0,
           "rescale_intercept": 0.0,
@@ -6016,33 +6010,33 @@
           "rows": 256,
           "cols": 256
         },
-        "n_files": 38
+        "n_files": 35
       },
       "t2_spir": {
-        "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919084267351",
+        "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408455492442",
         "all_series_uids": [
-          "1.3.46.670589.11.20182.5.0.6740.2015111919084267351"
+          "1.3.46.670589.11.20182.5.0.7188.2013072408455492442"
         ],
-        "file_count": 38,
+        "file_count": 36,
         "size_xyz": [
           256,
           256,
-          38
+          36
         ],
         "array_shape_zyx": [
-          38,
+          36,
           256,
           256
         ],
         "spacing_xyz": [
-          1.62109375,
-          1.62109375,
-          9.000000412399594
+          1.54296875,
+          1.54296875,
+          7.699999999999914
         ],
         "origin_xyz": [
-          -214.11024570465,
-          -201.26826715469,
-          72.763107299805
+          -192.65368556976,
+          -192.7957458496,
+          -77.092163085937
         ],
         "direction": [
           1.0,
@@ -6057,7 +6051,7 @@
         ],
         "pixel_type": "16-bit unsigned integer",
         "intensity_min": 0.0,
-        "intensity_max": 1624.0,
+        "intensity_max": 1814.0,
         "image_orientation_patient": [
           1.0,
           0.0,
@@ -6073,11 +6067,11 @@
           1.0
         ],
         "positions_available": true,
-        "position_projection_min": 72.763107299805,
-        "position_projection_max": 405.76312255859,
-        "position_step_median": 9.0,
-        "position_step_min": 8.999999999994998,
-        "position_step_max": 9.00001525879,
+        "position_projection_min": -77.092163085937,
+        "position_projection_max": 192.40783691406,
+        "position_step_median": 7.6999988555910015,
+        "position_step_min": 7.699996948239004,
+        "position_step_max": 7.7000122070299994,
         "position_monotonic": true,
         "position_direction": "increasing",
         "rescale_slopes": [
@@ -6125,17 +6119,15 @@
           33,
           34,
           35,
-          36,
-          37,
-          38
+          36
         ],
         "first_tags": {
-          "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919084267351",
-          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.364071544213986610926348532924126863819",
+          "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408455492442",
+          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.274354416912505316541034323232205872766",
           "instance_number": "1 ",
-          "slice_thickness": "8 ",
-          "spacing_between_slices": "9 ",
-          "pixel_spacing": "1.62109375\\1.62109375 ",
+          "slice_thickness": "7 ",
+          "spacing_between_slices": "7.7 ",
+          "pixel_spacing": "1.54296875\\1.54296875 ",
           "image_orientation_patient": [
             1.0,
             0.0,
@@ -6145,9 +6137,9 @@
             0.0
           ],
           "image_position_patient": [
-            -214.11024570465,
-            -201.26826715469,
-            72.763107299805
+            -192.65368556976,
+            -192.7957458496,
+            -77.092163085937
           ],
           "rescale_slope": 1.0,
           "rescale_intercept": 0.0,
@@ -6158,12 +6150,12 @@
           "cols": 256
         },
         "last_tags": {
-          "series_uid": "1.3.46.670589.11.20182.5.0.6740.2015111919084267351",
-          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.409057268011558877204763777862657826833",
-          "instance_number": "38",
-          "slice_thickness": "8 ",
-          "spacing_between_slices": "9 ",
-          "pixel_spacing": "1.62109375\\1.62109375 ",
+          "series_uid": "1.3.46.670589.11.20182.5.0.7188.2013072408455492442",
+          "sop_uid": "1.3.6.1.4.1.9590.100.1.2.36345968312493425138048321734083557462",
+          "instance_number": "36",
+          "slice_thickness": "7 ",
+          "spacing_between_slices": "7.7 ",
+          "pixel_spacing": "1.54296875\\1.54296875 ",
           "image_orientation_patient": [
             1.0,
             0.0,
@@ -6173,9 +6165,9 @@
             0.0
           ],
           "image_position_patient": [
-            -214.11024570465,
-            -201.26826715469,
-            405.76312255859
+            -192.65368556976,
+            -192.7957458496,
+            192.40783691406
           ],
           "rescale_slope": 1.0,
           "rescale_intercept": 0.0,
@@ -6185,11 +6177,11 @@
           "rows": 256,
           "cols": 256
         },
-        "n_files": 38
+        "n_files": 36
       },
-      "t1_ground_count": 38,
-      "t2_ground_count": 38,
-      "t1_slice_mismatch_t2": false,
+      "t1_ground_count": 35,
+      "t2_ground_count": 36,
+      "t1_slice_mismatch_t2": true,
       "t1_in_out_count_equal": true
     }
   },

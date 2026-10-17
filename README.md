@@ -1,4 +1,4 @@
-# COMPASS — CHAOS Preprocessing (template-aligned)
+# COMPASS — CHAOS pipeline (preprocessing + model + training)
 
 Preprocessing pipeline for the CHAOS dataset (CT + MR abdomen scans), rebuilt so it
 matches the paper's preprocessing claims: ANTs registration to a **CT reference
@@ -113,6 +113,54 @@ Splits (seed 42, patient-level, per modality):
 
 - **CT**: train 1,2,5,6,14,16,18,21,22,23,26,27,28,29 · val 19,24 · test 8,10,25,30
 - **MR**: train 1,2,3,5,13,15,19,21,22,31,34,36,37,38 · val 20,32 · test 8,10,33,39
+
+---
+
+## Model (branch `model-architecture`, `src/model/`)
+
+COMPASS per the paper's Model Architecture section + architecture figure:
+
+| Component | Implementation |
+|---|---|
+| **CT encoder** | ResNet34, ImageNet weights, 1→3 channel replication |
+| **MRI encoder** | one shared ResNet34 applied to T1 and T2 (paper: weights shared between sequences) |
+| **Feature pyramid** | stride-1 maxpool stem → 1/2 (64), 1/4 (128), 1/8 (256), 1/16 (512); each encoder's taps are 1×1-projected to **256 ch**, the 1/4 level being the paper's "256-channel features at one-quarter resolution" (also the 256-d pooled contrastive representation) |
+| **Gatekeeper + fusion** | bidirectional cross-attention, 4 heads, d=256, residual + LayerNorm; K/V of a missing modality are **zeroed** (NaN-free even when a whole stream is absent); sigmoid-gated 1×1 reliability gates combine available modalities; the same module is applied at 1/16 + 1/8 + 1/4 → fused pyramid ("skip connections from the fused features") |
+| **Decoder** | 4 up-blocks (GN + ReLU), 1/16 → 1/1 exact recovery on the padded 240 grid (235 center-padded, predictions cropped back), skips: fused 1/8, fused 1/4, CT-encoder 1/2 detail |
+| **Heads** | seg: 1×1 → 5-class logits; evidential: 1×1 on fused 1/4 → Softplus+1 → 5 Dirichlet alphas |
+| **Stage 2** | encoders + fusion frozen, **new** decoder + evidential head trained; uncertainty-guided per-modality gating w = 1/(1+ū_m) before fusion (text) and output fusion p′ = w·p + (1−w)/5 (figure) |
+
+Interpretation note: the paper's "4 upsampling blocks" + exact resolution recovery
+mathematically forces a 1/16 decoder start; the "1/4 feature resolution" spec is
+realized at the branch/fusion level and the contrastive pooling level.
+
+Losses (`src/losses.py`): Stage 1 `L_seg + 0.5·L_NT-Xent(T=0.07) + 0.3·L_CPS`
+(bidirectional KL between auxiliary branch predictions); Stage 2 `L_seg +
+L_Dirichlet + λ·L_KL`, λ annealed 0 → 0.1 over 20 epochs. MR samples use full
+CE + soft-Dice; CT samples are **liver-masked** (CE on GT-liver pixels + class-1
+Dice) because CHAOS CT labels cover the liver only.
+
+---
+
+## Training & evaluation
+
+```powershell
+# Stage 1: 150 ep, AdamW 1e-4, modality dropout p=0.2 (T1/T2; CT never dropped)
+python -m src.train --stage 1 --data-root <preprocessed/> --out runs/stage1 \
+    --batch-size 8 --amp [--resume]
+
+# Stage 2: 75 ep, AdamW 5e-5 on frozen encoders+fusion + new decoder/evidential
+python -m src.train --stage 2 --init-from runs/stage1/ckpt_best.pt \
+    --data-root <preprocessed/> --out runs/stage2 --batch-size 8 --amp
+
+# Six-condition test evaluation (Dice/IoU/precision/recall/pixel-acc + HD95/ECE/Brier/vacuity)
+python -m src.evaluate --ckpt runs/stage2/ckpt_best.pt --data-root <preprocessed/> --out runs/eval
+```
+
+On Kaggle use the thin notebook [`train_kaggle.ipynb`](train_kaggle.ipynb)
+(clone repo → mount dataset → run; cells auto-resume from `ckpt_last.pt`).
+Smoke tests (CPU, seconds): `tests/test_model.py`, `tests/test_losses.py`,
+`tests/test_metrics.py`, `tests/test_evaluate.py`, `tests/test_data.py`.
 
 ---
 
