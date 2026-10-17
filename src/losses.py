@@ -144,8 +144,8 @@ def stage1_loss(out: dict, target: torch.Tensor, is_ct: torch.Tensor
     l_cps = cps_loss(out["aux_ct_logits"], out["aux_mri_logits"], valid)
 
     total = l_seg + W_CONTRA * l_contra + W_CPS * l_cps
-    return total, {"seg": float(l_seg), "contra": float(l_contra),
-                   "cps": float(l_cps)}
+    return total, {"seg": float(l_seg.detach()), "contra": float(l_contra.detach()),
+                   "cps": float(l_cps.detach())}
 
 
 # ---------------------------------------------------------------- stage-2
@@ -178,7 +178,7 @@ def evidential_loss(alpha: torch.Tensor, target: torch.Tensor,
     term2 = alpha * (S - alpha) / (S ** 2 * (S + 1.0))
     nll = (term1 + term2).sum(dim=1).mean()
     kl = kl_to_uniform(alpha)
-    return nll + lam * kl, {"dir_nll": float(nll), "kl": float(kl),
+    return nll + lam * kl, {"dir_nll": float(nll.detach()), "kl": float(kl.detach()),
                             "lam": lam}
 
 
@@ -194,7 +194,8 @@ def stage2_loss(out: dict, target: torch.Tensor, is_ct: torch.Tensor,
     lam = kl_lambda(epoch)
     l_ev, ev_parts = evidential_loss(out["evidence"], target, lam)
     total = l_seg + l_ev
-    parts = {"seg": float(l_seg), "evidential": float(l_ev), **ev_parts}
+    parts = {"seg": float(l_seg.detach()), "evidential": float(l_ev.detach()),
+             **ev_parts}
     return total, parts
 
 
