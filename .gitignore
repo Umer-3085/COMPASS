@@ -22,3 +22,6 @@ venv/
 *.pt
 *.pth
 *.ckpt
+
+# zip
+compass_preprocessed.zip
