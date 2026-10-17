@@ -34,7 +34,10 @@ from pathlib import Path
 
 import numpy as np
 
-TEMPLATE_REL = Path("template") / "ct_template.nii.gz"
+TEMPLATE_REL_CANDIDATES = [
+    Path("template") / "ct_template.nii.gz",
+    Path("template") / "ct_template.nii",
+]
 EXPECTED_SLICE = (235, 235)          # template grid, in-plane
 MARKER = "_data_root.txt"
 
@@ -42,20 +45,27 @@ MARKER = "_data_root.txt"
 def discover(inputs: Path, explicit: Path | None = None) -> Path:
     """Find the preprocessed tree under the attached datasets.
 
-    Locates ``template/ct_template.nii.gz`` and returns the directory
-    that contains ``template/`` (the data root). With multiple hits the
-    shortest path wins (most shallowly nested = the actual mount).
+    Locates ``template/ct_template.nii.gz`` or ``template/ct_template.nii``
+    and returns the directory that contains ``template/`` (the data root).
+    With multiple hits the shortest path wins (most shallowly nested =
+    the actual mount).
     """
     if explicit is not None:
-        if not (explicit / TEMPLATE_REL).exists():
-            raise FileNotFoundError(f"no {TEMPLATE_REL} under {explicit}")
-        return explicit
-    hits = sorted(inputs.rglob(TEMPLATE_REL.name),
-                  key=lambda p: (len(p.parts), str(p)))
+        for cand in TEMPLATE_REL_CANDIDATES:
+            if (explicit / cand).exists():
+                return explicit
+        raise FileNotFoundError(
+            f"no template file ({' or '.join(str(c) for c in TEMPLATE_REL_CANDIDATES)}) "
+            f"under {explicit}")
+    hits = []
+    for cand in TEMPLATE_REL_CANDIDATES:
+        hits.extend(inputs.rglob(cand.name))
     hits = [h for h in hits if h.parent.name == "template"]
+    hits = sorted(set(hits), key=lambda p: (len(p.parts), str(p)))
     if not hits:
         raise FileNotFoundError(
-            f"{TEMPLATE_REL} not found under {inputs} — attach the "
+            f"no template file ({' or '.join(str(c) for c in TEMPLATE_REL_CANDIDATES)}) "
+            f"not found under {inputs} — attach the "
             "'compass-preprocessed' dataset as input data")
     root = hits[0].parent.parent
     if len(hits) > 1:
@@ -132,7 +142,7 @@ def prepare(inputs: Path, work: Path, force_copy: bool = False,
     data_root = discover(inputs, explicit)
     print(f"[kaggle_setup] data tree discovered at: {data_root}")
 
-    template_ok = (work / TEMPLATE_REL).exists()
+    template_ok = any((work / cand).exists() for cand in TEMPLATE_REL_CANDIDATES)
     if force_copy or not template_ok:
         if work.exists():
             shutil.rmtree(work)
