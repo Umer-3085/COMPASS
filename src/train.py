@@ -30,6 +30,12 @@ Smoke test (CPU, tiny):
 
 from __future__ import annotations
 
+import os
+
+# Must be set before torch initializes CUDA: reduces allocator
+# fragmentation on the T4 (16 GB is tight for 1/4-scale attention).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
 import argparse
 import csv
 import json

@@ -26,6 +26,7 @@ from __future__ import annotations
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 
 SCALE_ORDER = ("1/16", "1/8", "1/4")
 
@@ -64,9 +65,12 @@ class ZeroKVAttention(nn.Module):
         k = k * kv_valid
         v = v * kv_valid
 
-        scores = (q @ k.transpose(-2, -1)) / (d ** 0.5)       # (B,h,N,M)
-        attn = scores.softmax(dim=-1)
-        y = attn @ v                                           # (B,h,N,d)
+        # Memory-efficient attention (never materializes the (B,h,N,M)
+        # score matrix — critical at the 1/4 scale where M = 2*59*59 =
+        # 6962 tokens: the explicit matrix would be several GiB on a T4).
+        # Gatekeeper semantics are unchanged: zeroed K gives zero scores
+        # (uniform softmax) over zeroed V, so the output is exactly 0.
+        y = F.scaled_dot_product_attention(q, k, v)            # (B,h,N,d)
         y = y.transpose(1, 2).reshape(B, N, C)
         return self.out(y)
 
