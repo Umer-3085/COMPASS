@@ -97,7 +97,8 @@ class COMPASS(nn.Module):
         are frozen. The segmentation decoder and evidential head are then
         trained on top of the frozen feature representations."
         """
-        self.decoder2 = SegmentationDecoder()   # fresh initialization
+        device = next(self.parameters()).device
+        self.decoder2 = SegmentationDecoder().to(device)   # fresh init on correct device
         self.freeze_encoders_and_fusion()
         self.stage = 2
         self.uncertainty_guided = True
