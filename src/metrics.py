@@ -103,8 +103,8 @@ def brier_score(probs: np.ndarray, target: np.ndarray) -> float:
     probs: (C, H, W) softmax output; target: (H, W) int labels.
     """
     C = probs.shape[0]
-    onehot = np.zeros_like(probs)
-    onehot[target.astype(int)] = 1.0
+    idx = target.astype(np.int64)
+    onehot = (idx[None, :, :] == np.arange(C)[:, None, None]).astype(probs.dtype)
     return float(((probs - onehot) ** 2).sum(axis=0).mean())
 
 

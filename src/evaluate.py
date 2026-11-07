@@ -171,6 +171,8 @@ def parse_args() -> argparse.Namespace:
                    help="smoke test: cap test batches per condition")
     p.add_argument("--no-ug", action="store_true",
                    help="disable uncertainty-guided probs for ECE/Brier")
+    p.add_argument("--no-ug-gate", action="store_true",
+                   help="disable stage-2 uncertainty gating (uniform averaging / UA ablation)")
     return p.parse_args()
 
 
@@ -182,13 +184,17 @@ def main() -> None:
     ckpt = torch.load(args.ckpt, map_location="cpu", weights_only=False)
     stage = ckpt.get("stage", 1)
     use_ug = (stage == 2) and not args.no_ug
+    use_ug_gate = (stage == 2) and not args.no_ug_gate
     print(f"checkpoint: epoch {ckpt['epoch']}, stage {stage}, "
           f"best val dice {ckpt.get('best_dice', float('nan')):.4f}, "
-          f"UG probs for calibration: {use_ug}")
+          f"UG probs for calibration: {use_ug}, "
+          f"UG feature gating: {use_ug_gate}")
 
     model = COMPASS(pretrained=False).to(device)
     if stage == 2:
         model.init_stage2()
+    if args.no_ug_gate:
+        model.use_ug_gate = False
     model.load_state_dict(ckpt["model"])
 
     template = args.data_root / "template" / "ct_template.nii.gz"
@@ -260,6 +266,7 @@ def main() -> None:
     with open(args.out / "run.json", "w") as f:
         json.dump({"ckpt": str(args.ckpt), "stage": stage,
                    "use_ug": use_ug,
+                   "use_ug_gate": use_ug_gate,
                    "n_test_slices": len(loader.dataset)}, f, indent=2)
 
     print("\n================ SUMMARY (mean over patients) ================")

@@ -87,6 +87,7 @@ class COMPASS(nn.Module):
         self.decoder2: SegmentationDecoder | None = None
         self.stage = 1
         self.uncertainty_guided = False   # Stage-2 output-level UG fusion
+        self.use_ug_gate = True           # Stage-2 feature-level reliability gating
 
     # ------------------------- stage management -------------------------
 
@@ -168,7 +169,8 @@ class COMPASS(nn.Module):
         # Stage 2: uncertainty-guided per-modality gating of branch
         # features (paper: w_m = 1/(1 + mean_uncertainty_m), weights
         # normalized over available modalities). Stage 1: uniform (off).
-        if self.stage == 2:
+        # Can be bypassed via self.use_ug_gate=False for Uniform Averaging (UA) ablation.
+        if self.stage == 2 and self.use_ug_gate:
             ct_f, t1_f, t2_f = self._uncertainty_gate(
                 ct_f, t1_f, t2_f, ct_v, t1_v, t2_v
             )
